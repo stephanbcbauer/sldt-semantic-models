@@ -56,10 +56,26 @@ Some MS2 criteria require human judgment and are NOT automated:
 The automated check posts a comment on your PR with a table showing:
 
 ```markdown
+## MS2 Criteria Check Results
+
+### Summary
+**Overall:** 18/22 checks passed | 2 failed ❌ | 1 warnings ⚠️
+
+🔗 [View detailed workflow run](https://github.com/owner/repo/actions/runs/12345)
+
+**❌ Failed Checks:**
+File: `path/to/model.ttl`
+- Properties start with small letter
+- Preferred name and description present
+
+---
+
+### File: `path/to/model.ttl`
+
 | Criterion | Status | Details |
 |-----------|--------|----------|
 | Model validates with SAMM SDK | ✅ | Model validates successfully |
-| Use Camel-Case | ❌ | Some elements do not follow CamelCase<br>Element 'my_property' contains underscores |
+| Use Camel-Case | ❌ | Some elements do not follow CamelCase<br>Element 'my_property' contains underscores<br>[View in workflow run →](link-to-actions) |
 ```
 
 ### Status Indicators
@@ -68,13 +84,27 @@ The automated check posts a comment on your PR with a table showing:
 - ⚠️ **Warning**: Issue found but not critical - review recommended
 - ℹ️ **Info**: Informational message or not applicable
 
+### Summary Section Features
+- **Statistics**: Quick overview of passed/failed/warning counts
+- **Workflow Link**: Direct link to the GitHub Actions run for detailed logs
+- **Failed Checks List**: Quick reference of which checks need attention
+- **Inline Links**: Each failed check includes a link to the workflow run
+
 ## What to Do When Checks Fail
 
-1. **Review the Details**: Click on the workflow run to see detailed logs
-2. **Fix Issues**: Update your `.ttl` files to address failures
-3. **Commit Changes**: Push new commits to the PR branch
-4. **Automatic Re-check**: The workflow runs again automatically
-5. **Updated Comment**: The PR comment is updated with new results
+1. **Review the Summary**: Check the summary section at the top of the PR comment for an overview
+2. **Click Workflow Link**: Use the "View detailed workflow run" link to see full execution logs
+3. **Check Details**: Review specific error messages in the table
+4. **Fix Issues**: Update your `.ttl` files to address the failures
+5. **Commit Changes**: Push new commits to the PR branch
+6. **Automatic Re-check**: The workflow runs again automatically
+7. **Updated Comment**: The PR comment is updated with new results
+
+### Using Workflow Links
+- The summary includes a direct link to the GitHub Actions run
+- Each failed check in the details table also includes this link
+- Click to view detailed logs, execution times, and debug information
+- The workflow run shows exactly where and why checks failed
 
 ## Workflow Files
 
