@@ -1,0 +1,345 @@
+/*
+#######################################################################
+# Copyright (c) 2024 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This work is made available under the terms of the
+# Creative Commons Attribution 4.0 International (CC-BY-4.0) license,
+# which is available at
+# https://creativecommons.org/licenses/by/4.0/legalcode.
+#
+# SPDX-License-Identifier: CC-BY-4.0
+#######################################################################
+*/
+
+/**
+ * Content and description checks for MS2 criteria
+ */
+
+// Check: Preferred name and description
+function checkPreferredNameAndDescription(content) {
+    const issues = [];
+    
+    // Find all model elements - improved pattern to handle TTL formatting better
+    const elementPattern = /^:(\w+)\s+a\s+samm:(\w+)\s*;/gm;
+    let match;
+    
+    // Split content into sections for each element
+    const lines = content.split('\n');
+    let currentElement = null;
+    let currentBody = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Check if this line starts a new element definition
+        const elementMatch = line.match(/^:(\w+)\s+a\s+samm:(\w+)\s*;/);
+        
+        if (elementMatch) {
+            // Process previous element if exists
+            if (currentElement) {
+                const bodyText = currentBody.join('\n');
+                const hasPreferredName = /samm:preferredName/.test(bodyText);
+                const hasDescription = /samm:description/.test(bodyText);
+                
+                if (!hasPreferredName) {
+                    issues.push(`Element '${currentElement}' is missing preferredName`);
+                }
+                if (!hasDescription) {
+                    issues.push(`Element '${currentElement}' is missing description`);
+                }
+            }
+            
+            // Start new element
+            currentElement = elementMatch[1];
+            currentBody = [line];
+        } else if (currentElement && line.trim()) {
+            // Add to current element body
+            currentBody.push(line);
+            
+            // Stop if we hit a new element or end
+            if (line.match(/^\s*\./)) {
+                // Process this element
+                const bodyText = currentBody.join('\n');
+                const hasPreferredName = /samm:preferredName/.test(bodyText);
+                const hasDescription = /samm:description/.test(bodyText);
+                
+                if (!hasPreferredName) {
+                    issues.push(`Element '${currentElement}' is missing preferredName`);
+                }
+                if (!hasDescription) {
+                    issues.push(`Element '${currentElement}' is missing description`);
+                }
+                
+                currentElement = null;
+                currentBody = [];
+            }
+        }
+    }
+    
+    // Process last element if exists
+    if (currentElement && currentBody.length > 0) {
+        const bodyText = currentBody.join('\n');
+        const hasPreferredName = /samm:preferredName/.test(bodyText);
+        const hasDescription = /samm:description/.test(bodyText);
+        
+        if (!hasPreferredName) {
+            issues.push(`Element '${currentElement}' is missing preferredName`);
+        }
+        if (!hasDescription) {
+            issues.push(`Element '${currentElement}' is missing description`);
+        }
+    }
+    
+    if (issues.length === 0) {
+        return { status: 'pass', message: 'All elements have preferredName and description' };
+    } else {
+        return { status: 'fail', message: 'Some elements are missing preferredName or description', details: issues };
+    }
+}
+
+// Check: PreferredName vs description should be different
+function checkPreferredNameDescriptionDiff(content) {
+    const issues = [];
+    
+    const elementPattern = /^:(\w+)\s+a\s+samm:\w+\s*;([\s\S]*?)(?=^:|$)/gm;
+    let match;
+    
+    while ((match = elementPattern.exec(content)) !== null) {
+        const name = match[1];
+        const body = match[2];
+        
+        const preferredNameMatch = body.match(/samm:preferredName\s+"([^"]+)"/);
+        const descriptionMatch = body.match(/samm:description\s+"([^"]+)"/);
+        
+        if (preferredNameMatch && descriptionMatch) {
+            const preferredName = preferredNameMatch[1].toLowerCase().trim();
+            const description = descriptionMatch[1].toLowerCase().trim();
+            
+            if (preferredName === description) {
+                issues.push(`Element '${name}' has identical preferredName and description`);
+            }
+        }
+    }
+    
+    if (issues.length === 0) {
+        return { status: 'pass', message: 'PreferredNames and descriptions are different' };
+    } else {
+        return { status: 'fail', message: 'Some elements have identical preferredName and description', details: issues };
+    }
+}
+
+// Check: PreferredName should be human readable
+function checkPreferredNameHumanReadable(content) {
+    const issues = [];
+    
+    const preferredNamePattern = /^:(\w+)\s+a\s+samm:\w+\s*;[\s\S]*?samm:preferredName\s+"([^"]+)"/gm;
+    let match;
+    
+    while ((match = preferredNamePattern.exec(content)) !== null) {
+        const name = match[1];
+        const preferredName = match[2];
+        
+        // Check if preferredName is in CamelCase (likely not human readable)
+        if (/^[A-Z][a-z]+([A-Z][a-z]+)+$/.test(preferredName)) {
+            issues.push(`Element '${name}' has CamelCase preferredName '${preferredName}' - should use normal word separation`);
+        }
+    }
+    
+    if (issues.length === 0) {
+        return { status: 'pass', message: 'PreferredNames appear to be human readable' };
+    } else {
+        return { status: 'warning', message: 'Some preferredNames may not be human readable', details: issues };
+    }
+}
+
+// Check: Example values for simple types
+function checkExampleValues(content) {
+    const issues = [];
+    
+    // Helper function to find dataType for a characteristic or trait
+    function findDataType(characteristicName, content) {
+        // Find the characteristic/trait definition
+        // Match pattern: :Name a samm-c:Type ; ... .
+        // The definition ends with a period on its own or at end of a line
+        const charPattern = new RegExp(`^:${characteristicName}\\s+a\\s+samm[\\w-]*:[\\w]+\\s*;([\\s\\S]*?)\\.\\s*$`, 'gm');
+        const charMatch = charPattern.exec(content);
+        
+        if (charMatch) {
+            const charBody = charMatch[1];
+            
+            // Check for direct dataType
+            const dataTypeMatch = charBody.match(/samm:dataType\s+(xsd:\w+)/);
+            if (dataTypeMatch) {
+                return dataTypeMatch[1];
+            }
+            
+            // Check for baseCharacteristic (used in Traits)
+            const baseCharMatch = charBody.match(/samm-c:baseCharacteristic\s+:(\w+)/);
+            if (baseCharMatch) {
+                // Recursively find dataType in base characteristic
+                return findDataType(baseCharMatch[1], content);
+            }
+        }
+        
+        return null;
+    }
+    
+    // Find properties with simple types (not Entities or Characteristics)
+    // Match pattern: :Name a samm:Property ; ... .
+    const propertyPattern = /^:(\w+)\s+a\s+samm:Property\s*;([\s\S]*?)\.\s*$/gm;
+    let match;
+    
+    // Non-string datatypes that must not have string-like example values
+    const nonStringTypes = ['xsd:boolean', 'xsd:decimal', 'xsd:integer', 'xsd:double', 'xsd:float', 'xsd:nonNegativeInteger'];
+    
+    while ((match = propertyPattern.exec(content)) !== null) {
+        const name = match[1];
+        const body = match[2];
+        
+        let dataType = null;
+        
+        // Check if it has a dataType directly
+        const dataTypeMatch = body.match(/samm-c:dataType\s+(xsd:\w+)/);
+        if (dataTypeMatch) {
+            dataType = dataTypeMatch[1];
+        } else {
+            // Check if it has a characteristic reference
+            const characteristicMatch = body.match(/samm:characteristic\s+:(\w+)/);
+            if (characteristicMatch) {
+                dataType = findDataType(characteristicMatch[1], content);
+            }
+        }
+        
+        if (dataType) {
+            // Check for example values in different formats:
+            // 1. Quoted strings: "value" or 'value'
+            // 2. Typed literals: "value"^^xsd:type or 'value'^^xsd:type
+            // 3. Unquoted values: 42, true, 3.14
+            
+            // Look for quoted values (with or without type annotation)
+            const exampleMatchQuotedDouble = body.match(/samm:exampleValue\s+"([^"]+)"(\^\^xsd:\w+)?/);
+            const exampleMatchQuotedSingle = body.match(/samm:exampleValue\s+'([^']+)'(\^\^xsd:\w+)?/);
+            const exampleMatchUnquoted = body.match(/samm:exampleValue\s+([^\s;"']+)/);
+            
+            const hasQuotedExample = exampleMatchQuotedDouble || exampleMatchQuotedSingle;
+            const hasUnquotedExample = exampleMatchUnquoted && !hasQuotedExample;
+            
+            if (!hasQuotedExample && !hasUnquotedExample) {
+                issues.push(`Property '${name}' with dataType ${dataType} is missing exampleValue`);
+            } else if (hasQuotedExample) {
+                // Found a quoted example value (either plain string or typed literal with quotes)
+                const matchResult = exampleMatchQuotedDouble || exampleMatchQuotedSingle;
+                const exampleValue = matchResult[1];
+                const quoteType = exampleMatchQuotedDouble ? '"' : "'";
+                const typeAnnotation = matchResult[2]; // Will be ^^xsd:type or undefined
+                
+                // Check if non-string datatypes have string-like values
+                // For boolean, decimal, integer, double, float, nonNegativeInteger - the example should NOT be quoted
+                if (nonStringTypes.includes(dataType)) {
+                    if (typeAnnotation) {
+                        // It's a typed literal like "value"^^xsd:type
+                        issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType}${typeAnnotation} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    } else {
+                        // It's a plain quoted string
+                        issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    }
+                }
+            }
+        }
+    }
+    
+    if (issues.length === 0) {
+        return { status: 'pass', message: 'Properties with simple types have correct example values' };
+    } else {
+        return { status: 'fail', message: 'Some properties have missing or incorrect example values', details: issues };
+    }
+}
+
+// Check: Spelling in preferredName and description fields
+// Check: Spelling check for preferredName and description
+function checkSpelling(content) {
+    const issues = [];
+    
+    // Common typos to detect (misspelling -> correct spelling)
+    const commonTypos = {
+        'recieve': 'receive', 'reciever': 'receiver', 'occured': 'occurred', 'occurance': 'occurrence',
+        'seperate': 'separate', 'definately': 'definitely', 'accomodate': 'accommodate',
+        'neccessary': 'necessary', 'succesful': 'successful', 'sucessful': 'successful',
+        'adress': 'address', 'begining': 'beginning', 'beleive': 'believe',
+        'buisness': 'business', 'calender': 'calendar', 'commited': 'committed',
+        'concious': 'conscious', 'embarass': 'embarrass',
+        'enviroment': 'environment', 'existance': 'existence', 'goverment': 'government',
+        'independant': 'independent', 'maintainance': 'maintenance', 'occassion': 'occasion',
+        'privelege': 'privilege', 'reccomend': 'recommend', 'refering': 'referring',
+        'relavant': 'relevant', 'resistence': 'resistance', 'rythm': 'rhythm',
+        'schedual': 'schedule', 'succeded': 'succeeded', 'tommorow': 'tomorrow',
+        'untill': 'until', 'wierd': 'weird', 'vehicel': 'vehicle',
+        'identifer': 'identifier', 'numbr': 'number', 'manufactur': 'manufacturer',
+        'manufacurer': 'manufacturer', 'manufakturer': 'manufacturer', 'analisis': 'analysis',
+        'certficate': 'certificate', 'certficates': 'certificates', 'measurment': 'measurement',
+        'specifiation': 'specification', 'verson': 'version', 'revsion': 'revision',
+        'decription': 'description', 'descripton': 'description', 'descritpion': 'description',
+        'caracteristic': 'characteristic', 'charateristic': 'characteristic',
+        'proprety': 'property', 'propety': 'property', 'verfication': 'verification',
+        'validaton': 'validation', 'verfiy': 'verify', 'complient': 'compliant',
+        'complience': 'compliance', 'configuraton': 'configuration', 'documention': 'documentation',
+        'authentification': 'authentication', 'autorization': 'authorization'
+    };
+    
+    // Extract preferredName and description values
+    const textPattern = /samm:(preferredName|description)\s+"([^"]+)"/g;
+    let match;
+    const textsToCheck = [];
+    
+    while ((match = textPattern.exec(content)) !== null) {
+        const fieldType = match[1];
+        const text = match[2];
+        textsToCheck.push({ fieldType, text });
+    }
+    
+    if (textsToCheck.length === 0) {
+        return { status: 'info', message: 'No preferredName or description fields found to check' };
+    }
+    
+    // Check each text for spelling
+    for (const item of textsToCheck) {
+        const words = item.text
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, ' ') // Remove punctuation
+            .split(/\s+/)
+            .filter(word => word.length > 2); // Only check words with 3+ characters
+        
+        const foundTypos = [];
+        for (const word of words) {
+            // Skip numbers
+            if (/^\d+$/.test(word)) continue;
+            
+            // Check against common typos
+            if (commonTypos[word]) {
+                foundTypos.push(`${word} (suggest: ${commonTypos[word]})`);
+            }
+        }
+        
+        if (foundTypos.length > 0) {
+            issues.push(`Potential typos in ${item.fieldType} "${item.text}": ${foundTypos.join(', ')}`);
+        }
+    }
+    
+    if (issues.length === 0) {
+        return { status: 'pass', message: 'No common spelling issues detected in preferredName and description fields' };
+    } else {
+        return { status: 'warning', message: 'Potential spelling issues detected', details: issues };
+    }
+}
+
+
+module.exports = {
+    checkPreferredNameAndDescription,
+    checkPreferredNameDescriptionDiff,
+    checkPreferredNameHumanReadable,
+    checkExampleValues,
+    checkSpelling
+};

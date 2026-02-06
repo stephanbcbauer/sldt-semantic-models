@@ -1,0 +1,27 @@
+name: MS2 Criteria Checks
+description: Validates semantic models against MS2 criteria
+inputs:
+  added:
+    description: 'The changed files, detected by a previous action'
+    default: "[]"
+    required: false
+  modified:
+    description: 'The modified files, detected by a previous action'
+    default: "[]"
+    required: false
+  samm_version: 
+    description: The version of the used SAMM SDK
+    default: 2.11.1
+    required: true
+  pr_number:
+    description: Number of the pull request that triggered the action
+    required: true
+  repository:
+    description: Repository name (owner/repo)
+    required: false
+  run_id:
+    description: GitHub Actions run ID
+    required: false
+runs:
+  using: node16
+  main: index.js

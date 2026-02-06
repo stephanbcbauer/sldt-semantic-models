@@ -1,0 +1,128 @@
+#######################################################################
+# Copyright (c) 2024 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This work is made available under the terms of the
+# Creative Commons Attribution 4.0 International (CC-BY-4.0) license,
+# which is available at
+# https://creativecommons.org/licenses/by/4.0/legalcode.
+#
+# SPDX-License-Identifier: CC-BY-4.0
+#######################################################################
+
+name: MS2 Criteria Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.ttl'
+      - '.github/workflows/ms2-checks.yml'
+      - '.github/actions/ms2-checks/**'
+
+jobs:
+  ms2-checks:
+    name: Run MS2 Criteria Checks
+    runs-on: ubuntu-latest
+    if: github.event.pull_request
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Check Changes
+        id: changes
+        uses: Ana06/get-changed-files@v2.2.0
+        with:
+          format: 'json'
+      
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      
+      - name: Install Node dependencies
+        working-directory: ./.github/actions/ms2-checks
+        run: npm install
+      
+      - name: Run MS2 Checks
+        id: ms2_checks
+        uses: ./.github/actions/ms2-checks
+        with:
+          pr_number: ${{ github.event.number }}
+          samm_version: 2.11.1
+          added: ${{ steps.changes.outputs.added }}
+          modified: ${{ steps.changes.outputs.modified }}
+          repository: ${{ github.repository }}
+          run_id: ${{ github.run_id }}
+      
+      - name: Archive Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ms2-output
+          path: output
+
+  post-comment:
+    name: Post MS2 Check Results
+    runs-on: ubuntu-latest
+    needs: ms2-checks
+    if: always() && github.event.pull_request
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ms2-output
+          path: output
+      
+      - name: Post comment with results
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const outputFile = 'output/ms2-output.json';
+            
+            if (!fs.existsSync(outputFile)) {
+              console.log('No MS2 output file found');
+              return;
+            }
+            
+            const output = JSON.parse(fs.readFileSync(outputFile, 'utf8'));
+            
+            // Find existing MS2 comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: output.prNumber,
+            });
+            
+            const ms2Comment = comments.find(comment => 
+              comment.body.includes('## MS2 Criteria Check Results')
+            );
+            
+            const commentBody = output.report;
+            
+            if (ms2Comment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: ms2Comment.id,
+                body: commentBody
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: output.prNumber,
+                body: commentBody
+              });
+            }
