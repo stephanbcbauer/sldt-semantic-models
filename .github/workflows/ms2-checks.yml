@@ -58,6 +58,7 @@ jobs:
           run_id: ${{ github.run_id }}
       
       - name: Archive Results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ms2-output
