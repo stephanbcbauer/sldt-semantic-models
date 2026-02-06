@@ -54,6 +54,8 @@ jobs:
           samm_version: 2.11.1
           added: ${{ steps.changes.outputs.added }}
           modified: ${{ steps.changes.outputs.modified }}
+          repository: ${{ github.repository }}
+          run_id: ${{ github.run_id }}
       
       - name: Archive Results
         uses: actions/upload-artifact@v4

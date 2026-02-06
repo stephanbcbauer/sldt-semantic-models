@@ -33,6 +33,8 @@ var sammSdkPath = `${__dirname}/samm-cli-${sammVersion}.jar`;
 var added = JSON.parse(core.getInput('added'));
 var modified = JSON.parse(core.getInput('modified'));
 var prNumber = core.getInput('pr_number');
+var repository = core.getInput('repository') || '';
+var runId = core.getInput('run_id') || '';
 
 main();
 
@@ -52,7 +54,7 @@ async function main() {
         }
 
         const results = await runMS2Checks(allFiles);
-        const report = generateReport(results);
+        const report = generateReport(results, repository, runId);
 
         writeOutputToFilesystem(JSON.stringify({
             report: report,
@@ -145,11 +147,17 @@ async function runMS2Checks(files) {
     return allResults;
 }
 
-function generateReport(results) {
+function generateReport(results, repository, runId) {
     let report = '## MS2 Criteria Check Results\n\n';
     
     if (results.length === 0) {
         return report + 'No files to check.\n';
+    }
+    
+    // Generate workflow run link if available
+    let workflowLink = '';
+    if (repository && runId) {
+        workflowLink = `https://github.com/${repository}/actions/runs/${runId}`;
     }
     
     const criteriaChecks = [
@@ -177,6 +185,59 @@ function generateReport(results) {
         { key: 'copyrightHeader', label: 'Copyright header with contributors', critical: true }
     ];
     
+    // Calculate summary statistics
+    let totalChecks = 0;
+    let passedChecks = 0;
+    let failedChecks = 0;
+    let warningChecks = 0;
+    let infoChecks = 0;
+    
+    for (const result of results) {
+        for (const check of criteriaChecks) {
+            const checkResult = result.checks[check.key];
+            if (checkResult) {
+                totalChecks++;
+                if (checkResult.status === 'pass') passedChecks++;
+                else if (checkResult.status === 'fail') failedChecks++;
+                else if (checkResult.status === 'warning') warningChecks++;
+                else if (checkResult.status === 'info') infoChecks++;
+            }
+        }
+    }
+    
+    // Add summary section
+    report += '### Summary\n\n';
+    report += `**Overall:** ${passedChecks}/${totalChecks} checks passed`;
+    if (failedChecks > 0) report += ` | ${failedChecks} failed ❌`;
+    if (warningChecks > 0) report += ` | ${warningChecks} warnings ⚠️`;
+    if (infoChecks > 0) report += ` | ${infoChecks} info ℹ️`;
+    report += '\n\n';
+    
+    if (workflowLink) {
+        report += `🔗 [View detailed workflow run](${workflowLink})\n\n`;
+    }
+    
+    if (failedChecks > 0) {
+        report += '**❌ Failed Checks:**\n';
+        for (const result of results) {
+            const failedChecksList = [];
+            for (const check of criteriaChecks) {
+                const checkResult = result.checks[check.key];
+                if (checkResult && checkResult.status === 'fail') {
+                    failedChecksList.push(`- ${check.label}`);
+                }
+            }
+            if (failedChecksList.length > 0) {
+                report += `\nFile: \`${result.file}\`\n`;
+                report += failedChecksList.join('\n') + '\n';
+            }
+        }
+        report += '\n';
+    }
+    
+    report += '---\n\n';
+    
+    // Detailed results per file
     for (const result of results) {
         report += `### File: \`${result.file}\`\n\n`;
         report += '| Criterion | Status | Details |\n';
@@ -196,6 +257,10 @@ function generateReport(results) {
                     details = checkResult.message;
                     if (checkResult.details) {
                         details += '<br>' + checkResult.details.join('<br>');
+                    }
+                    // Add link to workflow run for failed checks
+                    if (workflowLink) {
+                        details += `<br>[View in workflow run →](${workflowLink})`;
                     }
                 } else if (checkResult.status === 'warning') {
                     status = '⚠️';

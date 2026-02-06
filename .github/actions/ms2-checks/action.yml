@@ -16,6 +16,12 @@ inputs:
   pr_number:
     description: Number of the pull request that triggered the action
     required: true
+  repository:
+    description: Repository name (owner/repo)
+    required: false
+  run_id:
+    description: GitHub Actions run ID
+    required: false
 runs:
   using: node16
   main: index.js
