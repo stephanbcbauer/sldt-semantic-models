@@ -175,23 +175,38 @@ function checkExampleValues(content) {
         
         if (dataTypeMatch) {
             const dataType = dataTypeMatch[1];
-            // Check for both double quotes ("") and single quotes ('')
-            const exampleMatchDouble = body.match(/samm:exampleValue\s+"([^"]+)"/);
-            const exampleMatchSingle = body.match(/samm:exampleValue\s+'([^']+)'/);
-            const exampleMatch = exampleMatchDouble || exampleMatchSingle;
             
-            if (!exampleMatch) {
+            // Check for example values in different formats:
+            // 1. Quoted strings: "value" or 'value'
+            // 2. Typed literals: "value"^^xsd:type or 'value'^^xsd:type
+            // 3. Unquoted values: 42, true, 3.14
+            
+            const exampleMatchQuotedDouble = body.match(/samm:exampleValue\s+"([^"]+)"(?:\^\^xsd:\w+)?/);
+            const exampleMatchQuotedSingle = body.match(/samm:exampleValue\s+'([^']+)'(?:\^\^xsd:\w+)?/);
+            const exampleMatchUnquoted = body.match(/samm:exampleValue\s+([^\s;"']+)/);
+            
+            const hasQuotedExample = exampleMatchQuotedDouble || exampleMatchQuotedSingle;
+            const hasUnquotedExample = exampleMatchUnquoted && !hasQuotedExample;
+            
+            if (!hasQuotedExample && !hasUnquotedExample) {
                 issues.push(`Property '${name}' with dataType ${dataType} is missing exampleValue`);
-            } else {
-                const exampleValue = exampleMatch[1];
-                const quoteType = exampleMatchDouble ? '"' : "'";
+            } else if (hasQuotedExample) {
+                // Found a quoted example value (either plain string or typed literal with quotes)
+                const exampleValue = (exampleMatchQuotedDouble || exampleMatchQuotedSingle)[1];
+                const quoteType = exampleMatchQuotedDouble ? '"' : "'";
+                const fullMatch = (exampleMatchQuotedDouble || exampleMatchQuotedSingle)[0];
                 
-                // Check if non-string datatypes have string-like values (quoted values are always strings in TTL)
-                // For boolean, decimal, integer, double, float - the example should NOT be a quoted string
+                // Check if non-string datatypes have string-like values
+                // For boolean, decimal, integer, double, float - the example should NOT be quoted
                 if (nonStringTypes.includes(dataType)) {
-                    // In TTL, if exampleValue is followed by quotes (single or double), it's a string
-                    // We found it with quotes in the regex, so it's a string - this is WRONG for these types
-                    issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    // Check if it's a typed literal (e.g., "value"^^xsd:type)
+                    const isTypedLiteral = /\^\^xsd:\w+/.test(fullMatch);
+                    
+                    if (isTypedLiteral) {
+                        issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType}^^xsd:type - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    } else {
+                        issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    }
                 }
             }
         }
