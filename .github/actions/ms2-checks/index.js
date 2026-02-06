@@ -130,7 +130,7 @@ async function runMS2Checks(files) {
         result.checks.preferredNameDescriptionDiff = contentChecks.checkPreferredNameDescriptionDiff(content);
         result.checks.preferredNameHumanReadable = contentChecks.checkPreferredNameHumanReadable(content);
         result.checks.exampleValues = contentChecks.checkExampleValues(content);
-        result.checks.spelling = await contentChecks.checkSpelling(content);
+        result.checks.spelling = contentChecks.checkSpelling(content);
         console.log(`  PreferredName & Description: ${result.checks.preferredNameAndDescription.status}`);
         console.log(`  Fields differ: ${result.checks.preferredNameDescriptionDiff.status}`);
         console.log(`  Human readable: ${result.checks.preferredNameHumanReadable.status}`);
