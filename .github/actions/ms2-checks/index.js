@@ -94,7 +94,7 @@ async function runMS2Checks(files) {
     const allResults = [];
 
     for (const file of files) {
-        console.log(`Checking file: ${file}`);
+        console.log(`\n📄 Checking file: ${file}`);
         
         const modelDir = path.dirname(file);
         const modelName = path.basename(file, '.ttl');
@@ -110,22 +110,39 @@ async function runMS2Checks(files) {
         const content = fs.readFileSync(file, 'utf8');
         
         // 1. SAMM validation
+        console.log('::group::🔍 SAMM Validation');
         result.checks.sammValidation = await validationChecks.checkSammValidation(file, sammSdkPath);
+        console.log(`  Status: ${result.checks.sammValidation.status}`);
+        console.log('::endgroup::');
 
         // 2. Naming convention checks
+        console.log('::group::📝 Naming Convention Checks');
         result.checks.camelCase = namingChecks.checkCamelCase(content);
         result.checks.noConsecutiveUnderscores = namingChecks.checkNoConsecutiveUnderscores(content);
         result.checks.capitalLetterModelElements = namingChecks.checkCapitalLetterModelElements(content);
         result.checks.smallLetterProperties = namingChecks.checkSmallLetterProperties(content);
         result.checks.propertyCharacteristicNameDiff = namingChecks.checkPropertyCharacteristicNameDiff(content);
+        console.log(`  CamelCase: ${result.checks.camelCase.status}`);
+        console.log(`  No consecutive underscores: ${result.checks.noConsecutiveUnderscores.status}`);
+        console.log(`  Capital letters: ${result.checks.capitalLetterModelElements.status}`);
+        console.log(`  Lowercase properties: ${result.checks.smallLetterProperties.status}`);
+        console.log(`  Property/Characteristic names: ${result.checks.propertyCharacteristicNameDiff.status}`);
+        console.log('::endgroup::');
         
         // 3. Content checks
+        console.log('::group::📋 Content Quality Checks');
         result.checks.preferredNameAndDescription = contentChecks.checkPreferredNameAndDescription(content);
         result.checks.preferredNameDescriptionDiff = contentChecks.checkPreferredNameDescriptionDiff(content);
         result.checks.preferredNameHumanReadable = contentChecks.checkPreferredNameHumanReadable(content);
         result.checks.exampleValues = contentChecks.checkExampleValues(content);
+        console.log(`  PreferredName & Description: ${result.checks.preferredNameAndDescription.status}`);
+        console.log(`  Fields differ: ${result.checks.preferredNameDescriptionDiff.status}`);
+        console.log(`  Human readable: ${result.checks.preferredNameHumanReadable.status}`);
+        console.log(`  Example values: ${result.checks.exampleValues.status}`);
+        console.log('::endgroup::');
         
         // 4. Structure checks
+        console.log('::group::🏗️ Model Structure Checks');
         result.checks.semanticVersioning = structureChecks.checkSemanticVersioning(content, modelDir);
         result.checks.abbreviationUsage = structureChecks.checkAbbreviationUsage(content);
         result.checks.redundantPrefixes = structureChecks.checkRedundantPrefixes(content);
@@ -133,13 +150,28 @@ async function runMS2Checks(files) {
         result.checks.unitCatalog = structureChecks.checkUnitCatalog(content);
         result.checks.constraints = structureChecks.checkConstraints(content);
         result.checks.externalStandards = structureChecks.checkExternalStandards(content);
+        console.log(`  Semantic versioning: ${result.checks.semanticVersioning.status}`);
+        console.log(`  Abbreviations: ${result.checks.abbreviationUsage.status}`);
+        console.log(`  Redundant prefixes: ${result.checks.redundantPrefixes.status}`);
+        console.log(`  Aspect naming: ${result.checks.aspectNaming.status}`);
+        console.log(`  Unit catalog: ${result.checks.unitCatalog.status}`);
+        console.log(`  Constraints: ${result.checks.constraints.status}`);
+        console.log(`  External standards: ${result.checks.externalStandards.status}`);
+        console.log('::endgroup::');
         
         // 5. File checks
+        console.log('::group::📁 File & Metadata Checks');
         result.checks.externalModelsState = await fileChecks.checkExternalModelsState(content);
         result.checks.metadataJson = fileChecks.checkMetadataJson(modelDir);
         result.checks.jsonSchemaValidation = await fileChecks.checkJsonSchemaValidation(modelDir, modelName);
         result.checks.releaseNotes = fileChecks.checkReleaseNotes(modelDir);
         result.checks.copyrightHeader = fileChecks.checkCopyrightHeader(content);
+        console.log(`  External models: ${result.checks.externalModelsState.status}`);
+        console.log(`  metadata.json: ${result.checks.metadataJson.status}`);
+        console.log(`  JSON schema: ${result.checks.jsonSchemaValidation.status}`);
+        console.log(`  RELEASE_NOTES.md: ${result.checks.releaseNotes.status}`);
+        console.log(`  Copyright header: ${result.checks.copyrightHeader.status}`);
+        console.log('::endgroup::');
 
         allResults.push(result);
     }
@@ -217,8 +249,48 @@ function generateReport(results, repository, runId) {
         report += `🔗 [View detailed workflow run](${workflowLink})\n\n`;
     }
     
+    // Add complete checks summary table
+    report += '**All Checks Overview:**\n\n';
+    report += '| Check | Status | Category |\n';
+    report += '|-------|--------|----------|\n';
+    
+    // Aggregate status for each check across all files
+    for (const check of criteriaChecks) {
+        let overallStatus = '✅'; // Default to pass
+        let hasFailure = false;
+        let hasWarning = false;
+        let hasInfo = false;
+        
+        for (const result of results) {
+            const checkResult = result.checks[check.key];
+            if (checkResult) {
+                if (checkResult.status === 'fail') {
+                    hasFailure = true;
+                } else if (checkResult.status === 'warning') {
+                    hasWarning = true;
+                } else if (checkResult.status === 'info') {
+                    hasInfo = true;
+                }
+            }
+        }
+        
+        // Determine overall status (fail > warning > info > pass)
+        if (hasFailure) {
+            overallStatus = '❌';
+        } else if (hasWarning) {
+            overallStatus = '⚠️';
+        } else if (hasInfo) {
+            overallStatus = 'ℹ️';
+        }
+        
+        const category = check.critical ? 'Critical' : 'Advisory';
+        report += `| ${check.label} | ${overallStatus} | ${category} |\n`;
+    }
+    
+    report += '\n';
+    
     if (failedChecks > 0) {
-        report += '**❌ Failed Checks:**\n';
+        report += '**❌ Failed Checks Details:**\n';
         for (const result of results) {
             const failedChecksList = [];
             for (const check of criteriaChecks) {
