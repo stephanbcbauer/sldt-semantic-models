@@ -161,8 +161,10 @@ function checkExampleValues(content) {
     
     // Helper function to find dataType for a characteristic or trait
     function findDataType(characteristicName, content) {
-        // First, try to find the characteristic/trait definition
-        const charPattern = new RegExp(`^:${characteristicName}\\s+a\\s+samm[\\w-]*:[\\w]+\\s*;([\\s\\S]*?)(?=^:|$)`, 'gm');
+        // Find the characteristic/trait definition
+        // Match pattern: :Name a samm-c:Type ; ... .
+        // The definition ends with a period on its own or at end of a line
+        const charPattern = new RegExp(`^:${characteristicName}\\s+a\\s+samm[\\w-]*:[\\w]+\\s*;([\\s\\S]*?)\\.\\s*$`, 'gm');
         const charMatch = charPattern.exec(content);
         
         if (charMatch) {
@@ -186,7 +188,8 @@ function checkExampleValues(content) {
     }
     
     // Find properties with simple types (not Entities or Characteristics)
-    const propertyPattern = /^:(\w+)\s+a\s+samm:Property\s*;([\s\S]*?)(?=^:|$)/gm;
+    // Match pattern: :Name a samm:Property ; ... .
+    const propertyPattern = /^:(\w+)\s+a\s+samm:Property\s*;([\s\S]*?)\.\s*$/gm;
     let match;
     
     // Non-string datatypes that must not have string-like example values
