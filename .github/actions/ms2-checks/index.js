@@ -16,7 +16,7 @@
 
 const core = require('@actions/core');
 const github = require('@actions/github');
-const https = require('https');
+const tc = require('@actions/tool-cache');
 const fs = require('fs');
 const path = require('path');
 
@@ -73,21 +73,16 @@ async function asyncSammSdkDownload(url) {
         return;
     }
 
-    return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(sammSdkPath);
-        https.get(url, function (response) {
-            response.pipe(file);
-            file.on('finish', function () {
-                file.close(() => {
-                    console.log('SAMM SDK downloaded');
-                    resolve();
-                });
-            });
-        }).on('error', function (err) {
-            fs.unlink(sammSdkPath, () => {});
-            reject(err);
-        });
-    });
+    try {
+        console.log(`Downloading SAMM CLI from ${url}...`);
+        const downloadPath = await tc.downloadTool(url);
+        
+        // Move the downloaded file to the expected path
+        fs.renameSync(downloadPath, sammSdkPath);
+        console.log('SAMM SDK downloaded successfully');
+    } catch (error) {
+        throw new Error(`Failed to download SAMM SDK: ${error.message}`);
+    }
 }
 
 async function runMS2Checks(files) {
