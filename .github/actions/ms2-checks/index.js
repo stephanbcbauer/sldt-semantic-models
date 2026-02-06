@@ -249,48 +249,8 @@ function generateReport(results, repository, runId) {
         report += `🔗 [View detailed workflow run](${workflowLink})\n\n`;
     }
     
-    // Add complete checks summary table
-    report += '**All Checks Overview:**\n\n';
-    report += '| Check | Status | Category |\n';
-    report += '|-------|--------|----------|\n';
-    
-    // Aggregate status for each check across all files
-    for (const check of criteriaChecks) {
-        let overallStatus = '✅'; // Default to pass
-        let hasFailure = false;
-        let hasWarning = false;
-        let hasInfo = false;
-        
-        for (const result of results) {
-            const checkResult = result.checks[check.key];
-            if (checkResult) {
-                if (checkResult.status === 'fail') {
-                    hasFailure = true;
-                } else if (checkResult.status === 'warning') {
-                    hasWarning = true;
-                } else if (checkResult.status === 'info') {
-                    hasInfo = true;
-                }
-            }
-        }
-        
-        // Determine overall status (fail > warning > info > pass)
-        if (hasFailure) {
-            overallStatus = '❌';
-        } else if (hasWarning) {
-            overallStatus = '⚠️';
-        } else if (hasInfo) {
-            overallStatus = 'ℹ️';
-        }
-        
-        const category = check.critical ? 'Critical' : 'Advisory';
-        report += `| ${check.label} | ${overallStatus} | ${category} |\n`;
-    }
-    
-    report += '\n';
-    
     if (failedChecks > 0) {
-        report += '**❌ Failed Checks Details:**\n';
+        report += '**❌ Failed Checks:**\n';
         for (const result of results) {
             const failedChecksList = [];
             for (const check of criteriaChecks) {
