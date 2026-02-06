@@ -2,6 +2,23 @@
 
 This GitHub Action validates semantic models against the MS2 criteria defined for the Tractus-X project.
 
+## Architecture
+
+The action is now modularized for better maintainability:
+
+```
+.github/actions/ms2-checks/
+├── index.js           # Main orchestration
+├── action.yml         # Action definition
+├── package.json       # Dependencies
+└── checks/            # Modular check functions
+    ├── naming.js      # Naming conventions (CamelCase, capitalization)
+    ├── content.js     # Content checks (preferredName, description, examples)
+    ├── structure.js   # Model structure (versioning, aspects, constraints)
+    ├── files.js       # File existence (metadata.json, RELEASE_NOTES.md)
+    └── validation.js  # SAMM CLI validation
+```
+
 ## What it checks
 
 The action performs automated checks for the following MS2 criteria:
@@ -70,10 +87,22 @@ Results are posted as a markdown table in PR comments:
 
 To modify the checks:
 
-1. Edit `.github/actions/ms2-checks/index.js`
-2. Add/modify check functions
-3. Update the `criteriaChecks` array in `generateReport()`
-4. Test locally with `node index.js` (after setting inputs)
+1. **Edit check modules** in `checks/` directory:
+   - `naming.js` - Naming convention checks
+   - `content.js` - Content and description checks
+   - `structure.js` - Model structure checks
+   - `files.js` - File existence and format checks
+   - `validation.js` - SAMM CLI validation
+2. **Update `index.js`** if adding new check categories
+3. **Update `criteriaChecks` array** in `generateReport()` for new checks
+4. **Test locally** with `node index.js` (after setting inputs)
+
+### Adding a New Check
+
+1. Add function to appropriate module in `checks/`
+2. Export the function
+3. Import and call it in `index.js`
+4. Add entry to `criteriaChecks` array
 
 ## Dependencies
 
