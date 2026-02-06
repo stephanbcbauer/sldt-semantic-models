@@ -35,6 +35,20 @@ The `metadata.json` is only relevant for model files on the branch `main`. All o
 
 We have a governance process for the joint development of new and updated models which we describe [in more details under this link](CONTRIBUTING.md).
 
+## Automated MS2 Criteria Checks
+
+To support the modeling process, we have implemented **automated MS2 criteria checks** that run on every pull request. These checks validate your semantic models against the MS2 guidelines and post results as PR comments.
+
+The automated checks cover:
+- SAMM validation with CLI 2.11.1
+- Naming conventions (CamelCase, capitalization)
+- Required fields (preferredName, description)
+- Versioning and metadata requirements
+- JSON schema validation
+- And 15+ more criteria
+
+For complete details, see [MS2 Checks Documentation](documentation/MS2-CHECKS.md).
+
 ## Summary of Governance Process
 
 The governance process is **triggered by a domain expert** requesting a new model or model update. A **modeling team then reviews** the request to identify whether it is of interest for Catena-X and Tractus-X and whether there is not already another model which can solve the raised issue (indicating label **MS1-Approved**).

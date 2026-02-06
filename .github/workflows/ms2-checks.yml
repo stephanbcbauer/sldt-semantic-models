@@ -17,6 +17,10 @@ name: MS2 Criteria Checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - '**.ttl'
+      - '.github/workflows/ms2-checks.yml'
+      - '.github/actions/ms2-checks/**'
 
 jobs:
   ms2-checks:
