@@ -261,22 +261,74 @@ function checkSmallLetterProperties(content) {
 function checkPreferredNameAndDescription(content) {
     const issues = [];
     
-    // Find all model elements
-    const elementPattern = /^:(\w+)\s+a\s+samm:\w+\s*;([\s\S]*?)(?=^:|$)/gm;
+    // Find all model elements - improved pattern to handle TTL formatting better
+    const elementPattern = /^:(\w+)\s+a\s+samm:(\w+)\s*;/gm;
     let match;
     
-    while ((match = elementPattern.exec(content)) !== null) {
-        const name = match[1];
-        const body = match[2];
+    // Split content into sections for each element
+    const lines = content.split('\n');
+    let currentElement = null;
+    let currentBody = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         
-        const hasPreferredName = /samm:preferredName/.test(body);
-        const hasDescription = /samm:description/.test(body);
+        // Check if this line starts a new element definition
+        const elementMatch = line.match(/^:(\w+)\s+a\s+samm:(\w+)\s*;/);
+        
+        if (elementMatch) {
+            // Process previous element if exists
+            if (currentElement) {
+                const bodyText = currentBody.join('\n');
+                const hasPreferredName = /samm:preferredName/.test(bodyText);
+                const hasDescription = /samm:description/.test(bodyText);
+                
+                if (!hasPreferredName) {
+                    issues.push(`Element '${currentElement}' is missing preferredName`);
+                }
+                if (!hasDescription) {
+                    issues.push(`Element '${currentElement}' is missing description`);
+                }
+            }
+            
+            // Start new element
+            currentElement = elementMatch[1];
+            currentBody = [line];
+        } else if (currentElement && line.trim()) {
+            // Add to current element body
+            currentBody.push(line);
+            
+            // Stop if we hit a new element or end
+            if (line.match(/^\s*\./)) {
+                // Process this element
+                const bodyText = currentBody.join('\n');
+                const hasPreferredName = /samm:preferredName/.test(bodyText);
+                const hasDescription = /samm:description/.test(bodyText);
+                
+                if (!hasPreferredName) {
+                    issues.push(`Element '${currentElement}' is missing preferredName`);
+                }
+                if (!hasDescription) {
+                    issues.push(`Element '${currentElement}' is missing description`);
+                }
+                
+                currentElement = null;
+                currentBody = [];
+            }
+        }
+    }
+    
+    // Process last element if exists
+    if (currentElement && currentBody.length > 0) {
+        const bodyText = currentBody.join('\n');
+        const hasPreferredName = /samm:preferredName/.test(bodyText);
+        const hasDescription = /samm:description/.test(bodyText);
         
         if (!hasPreferredName) {
-            issues.push(`Element '${name}' is missing preferredName`);
+            issues.push(`Element '${currentElement}' is missing preferredName`);
         }
         if (!hasDescription) {
-            issues.push(`Element '${name}' is missing description`);
+            issues.push(`Element '${currentElement}' is missing description`);
         }
     }
     
