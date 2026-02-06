@@ -163,26 +163,40 @@ function checkExampleValues(content) {
     const propertyPattern = /^:(\w+)\s+a\s+samm:Property\s*;([\s\S]*?)(?=^:|$)/gm;
     let match;
     
+    // Non-string datatypes that must not have string-like example values
+    const nonStringTypes = ['xsd:boolean', 'xsd:decimal', 'xsd:integer', 'xsd:double', 'xsd:float'];
+    
     while ((match = propertyPattern.exec(content)) !== null) {
         const name = match[1];
         const body = match[2];
         
         // Check if it has a dataType that's a simple type
-        const hasSimpleDataType = /dataType\s+xsd:\w+/.test(body);
+        const dataTypeMatch = body.match(/samm-c:dataType\s+(xsd:\w+)/);
         
-        if (hasSimpleDataType) {
-            const hasExample = /samm:exampleValue/.test(body);
+        if (dataTypeMatch) {
+            const dataType = dataTypeMatch[1];
+            const exampleMatch = body.match(/samm:exampleValue\s+"([^"]+)"/);
             
-            if (!hasExample) {
-                issues.push(`Property '${name}' with simple type is missing exampleValue`);
+            if (!exampleMatch) {
+                issues.push(`Property '${name}' with dataType ${dataType} is missing exampleValue`);
+            } else {
+                const exampleValue = exampleMatch[1];
+                
+                // Check if non-string datatypes have string-like values (quoted values are always strings in TTL)
+                // For boolean, decimal, integer, double, float - the example should NOT be a quoted string
+                if (nonStringTypes.includes(dataType)) {
+                    // In TTL, if exampleValue is followed by quotes, it's a string
+                    // We found it with quotes in the regex, so it's a string - this is WRONG for these types
+                    issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue "${exampleValue}" - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                }
             }
         }
     }
     
     if (issues.length === 0) {
-        return { status: 'pass', message: 'Properties with simple types have example values' };
+        return { status: 'pass', message: 'Properties with simple types have correct example values' };
     } else {
-        return { status: 'warning', message: 'Some properties with simple types are missing example values', details: issues };
+        return { status: 'fail', message: 'Some properties have missing or incorrect example values', details: issues };
     }
 }
 
