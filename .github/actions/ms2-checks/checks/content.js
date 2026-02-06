@@ -164,7 +164,7 @@ function checkExampleValues(content) {
     let match;
     
     // Non-string datatypes that must not have string-like example values
-    const nonStringTypes = ['xsd:boolean', 'xsd:decimal', 'xsd:integer', 'xsd:double', 'xsd:float'];
+    const nonStringTypes = ['xsd:boolean', 'xsd:decimal', 'xsd:integer', 'xsd:double', 'xsd:float', 'xsd:nonNegativeInteger'];
     
     while ((match = propertyPattern.exec(content)) !== null) {
         const name = match[1];
@@ -181,8 +181,9 @@ function checkExampleValues(content) {
             // 2. Typed literals: "value"^^xsd:type or 'value'^^xsd:type
             // 3. Unquoted values: 42, true, 3.14
             
-            const exampleMatchQuotedDouble = body.match(/samm:exampleValue\s+"([^"]+)"(?:\^\^xsd:\w+)?/);
-            const exampleMatchQuotedSingle = body.match(/samm:exampleValue\s+'([^']+)'(?:\^\^xsd:\w+)?/);
+            // Look for quoted values (with or without type annotation)
+            const exampleMatchQuotedDouble = body.match(/samm:exampleValue\s+"([^"]+)"(\^\^xsd:\w+)?/);
+            const exampleMatchQuotedSingle = body.match(/samm:exampleValue\s+'([^']+)'(\^\^xsd:\w+)?/);
             const exampleMatchUnquoted = body.match(/samm:exampleValue\s+([^\s;"']+)/);
             
             const hasQuotedExample = exampleMatchQuotedDouble || exampleMatchQuotedSingle;
@@ -192,19 +193,19 @@ function checkExampleValues(content) {
                 issues.push(`Property '${name}' with dataType ${dataType} is missing exampleValue`);
             } else if (hasQuotedExample) {
                 // Found a quoted example value (either plain string or typed literal with quotes)
-                const exampleValue = (exampleMatchQuotedDouble || exampleMatchQuotedSingle)[1];
+                const matchResult = exampleMatchQuotedDouble || exampleMatchQuotedSingle;
+                const exampleValue = matchResult[1];
                 const quoteType = exampleMatchQuotedDouble ? '"' : "'";
-                const fullMatch = (exampleMatchQuotedDouble || exampleMatchQuotedSingle)[0];
+                const typeAnnotation = matchResult[2]; // Will be ^^xsd:type or undefined
                 
                 // Check if non-string datatypes have string-like values
-                // For boolean, decimal, integer, double, float - the example should NOT be quoted
+                // For boolean, decimal, integer, double, float, nonNegativeInteger - the example should NOT be quoted
                 if (nonStringTypes.includes(dataType)) {
-                    // Check if it's a typed literal (e.g., "value"^^xsd:type)
-                    const isTypedLiteral = /\^\^xsd:\w+/.test(fullMatch);
-                    
-                    if (isTypedLiteral) {
-                        issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType}^^xsd:type - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    if (typeAnnotation) {
+                        // It's a typed literal like "value"^^xsd:type
+                        issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType}${typeAnnotation} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
                     } else {
+                        // It's a plain quoted string
                         issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
                     }
                 }
