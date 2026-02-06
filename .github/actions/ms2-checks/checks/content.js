@@ -175,19 +175,23 @@ function checkExampleValues(content) {
         
         if (dataTypeMatch) {
             const dataType = dataTypeMatch[1];
-            const exampleMatch = body.match(/samm:exampleValue\s+"([^"]+)"/);
+            // Check for both double quotes ("") and single quotes ('')
+            const exampleMatchDouble = body.match(/samm:exampleValue\s+"([^"]+)"/);
+            const exampleMatchSingle = body.match(/samm:exampleValue\s+'([^']+)'/);
+            const exampleMatch = exampleMatchDouble || exampleMatchSingle;
             
             if (!exampleMatch) {
                 issues.push(`Property '${name}' with dataType ${dataType} is missing exampleValue`);
             } else {
                 const exampleValue = exampleMatch[1];
+                const quoteType = exampleMatchDouble ? '"' : "'";
                 
                 // Check if non-string datatypes have string-like values (quoted values are always strings in TTL)
                 // For boolean, decimal, integer, double, float - the example should NOT be a quoted string
                 if (nonStringTypes.includes(dataType)) {
-                    // In TTL, if exampleValue is followed by quotes, it's a string
+                    // In TTL, if exampleValue is followed by quotes (single or double), it's a string
                     // We found it with quotes in the regex, so it's a string - this is WRONG for these types
-                    issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue "${exampleValue}" - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
+                    issues.push(`Property '${name}' with dataType ${dataType} has string-like exampleValue ${quoteType}${exampleValue}${quoteType} - must be unquoted (e.g., samm:exampleValue 42 for integers, true for boolean)`);
                 }
             }
         }
