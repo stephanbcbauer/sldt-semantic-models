@@ -25,17 +25,20 @@ const path = require('path');
 async function checkExternalModelsState(content) {
     const issues = [];
     
-    // Find imported/external model references
-    const importPattern = /@prefix\s+([\w-]+):\s+<urn:samm:io\.catenax[\w.]*:(\d+\.\d+\.\d+)#>/g;
+    // Find imported/external model references with ext- prefix
+    // Pattern: @prefix ext-name: <urn:samm:io.catenax.namespace.path:version#> .
+    const importPattern = /@prefix\s+(ext-[\w-]+):\s+<urn:samm:(io\.catenax\.[\w.]+):(\d+\.\d+\.\d+)#>/g;
     let match;
     
     const externalModels = [];
     while ((match = importPattern.exec(content)) !== null) {
         const prefix = match[1];
-        const version = match[2];
+        const namespace = match[2];
+        const version = match[3];
         
-        if (prefix !== 'samm' && prefix !== 'samm-c' && prefix !== 'samm-e' && prefix !== 'unit') {
-            externalModels.push({ prefix, version });
+        // Only process prefixes starting with 'ext-'
+        if (prefix.startsWith('ext-')) {
+            externalModels.push({ prefix, namespace, version });
         }
     }
     
@@ -45,25 +48,27 @@ async function checkExternalModelsState(content) {
     
     // Check the status of each external model
     for (const model of externalModels) {
-        // Try to find the metadata.json for this model
-        // This is a simplified check - in reality, we'd need to resolve the full path
-        const modelPath = model.prefix.replace(/-/g, '_').replace('ext_', 'io.catenax.');
-        const metadataPath = path.join(modelPath, model.version, 'metadata.json');
+        // Construct the path to metadata.json using the full namespace
+        const metadataPath = path.join(model.namespace, model.version, 'metadata.json');
         
         if (fs.existsSync(metadataPath)) {
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-            if (metadata.status !== 'release') {
-                issues.push(`External model '${model.prefix}' (${model.version}) has status '${metadata.status}' instead of 'release'`);
+            try {
+                const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+                if (metadata.status !== 'release') {
+                    issues.push(`External model '${model.prefix}' (${model.namespace}:${model.version}) has status '${metadata.status}' instead of 'release'`);
+                }
+            } catch (error) {
+                issues.push(`External model '${model.prefix}' (${model.namespace}:${model.version}) - cannot parse metadata.json: ${error.message}`);
             }
         } else {
-            issues.push(`Cannot verify status of external model '${model.prefix}' (${model.version}) - metadata.json not found`);
+            issues.push(`External model '${model.prefix}' (${model.namespace}:${model.version}) - metadata.json not found at '${metadataPath}'`);
         }
     }
     
     if (issues.length === 0) {
         return { status: 'pass', message: 'All external models have "release" status' };
     } else {
-        return { status: 'warning', message: 'Some external models may not have "release" status', details: issues };
+        return { status: 'fail', message: 'Some external models do not have "release" status', details: issues };
     }
 }
 
