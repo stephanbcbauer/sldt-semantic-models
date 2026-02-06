@@ -256,7 +256,12 @@ function generateReport(results, repository, runId) {
                     status = '❌';
                     details = checkResult.message;
                     if (checkResult.details) {
-                        details += '<br>' + checkResult.details.join('<br>');
+                        // Handle both array and string details
+                        if (Array.isArray(checkResult.details)) {
+                            details += '<br>' + checkResult.details.join('<br>');
+                        } else {
+                            details += '<br>' + checkResult.details;
+                        }
                     }
                     // Add link to workflow run for failed checks
                     if (workflowLink) {
@@ -266,7 +271,12 @@ function generateReport(results, repository, runId) {
                     status = '⚠️';
                     details = checkResult.message;
                     if (checkResult.details) {
-                        details += '<br>' + checkResult.details.join('<br>');
+                        // Handle both array and string details
+                        if (Array.isArray(checkResult.details)) {
+                            details += '<br>' + checkResult.details.join('<br>');
+                        } else {
+                            details += '<br>' + checkResult.details;
+                        }
                     }
                 } else if (checkResult.status === 'info') {
                     status = 'ℹ️';
