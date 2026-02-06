@@ -159,6 +159,32 @@ function checkPreferredNameHumanReadable(content) {
 function checkExampleValues(content) {
     const issues = [];
     
+    // Helper function to find dataType for a characteristic or trait
+    function findDataType(characteristicName, content) {
+        // First, try to find the characteristic/trait definition
+        const charPattern = new RegExp(`^:${characteristicName}\\s+a\\s+samm[\\w-]*:[\\w]+\\s*;([\\s\\S]*?)(?=^:|$)`, 'gm');
+        const charMatch = charPattern.exec(content);
+        
+        if (charMatch) {
+            const charBody = charMatch[1];
+            
+            // Check for direct dataType
+            const dataTypeMatch = charBody.match(/samm:dataType\s+(xsd:\w+)/);
+            if (dataTypeMatch) {
+                return dataTypeMatch[1];
+            }
+            
+            // Check for baseCharacteristic (used in Traits)
+            const baseCharMatch = charBody.match(/samm-c:baseCharacteristic\s+:(\w+)/);
+            if (baseCharMatch) {
+                // Recursively find dataType in base characteristic
+                return findDataType(baseCharMatch[1], content);
+            }
+        }
+        
+        return null;
+    }
+    
     // Find properties with simple types (not Entities or Characteristics)
     const propertyPattern = /^:(\w+)\s+a\s+samm:Property\s*;([\s\S]*?)(?=^:|$)/gm;
     let match;
@@ -170,12 +196,21 @@ function checkExampleValues(content) {
         const name = match[1];
         const body = match[2];
         
-        // Check if it has a dataType that's a simple type
-        const dataTypeMatch = body.match(/samm-c:dataType\s+(xsd:\w+)/);
+        let dataType = null;
         
+        // Check if it has a dataType directly
+        const dataTypeMatch = body.match(/samm-c:dataType\s+(xsd:\w+)/);
         if (dataTypeMatch) {
-            const dataType = dataTypeMatch[1];
-            
+            dataType = dataTypeMatch[1];
+        } else {
+            // Check if it has a characteristic reference
+            const characteristicMatch = body.match(/samm:characteristic\s+:(\w+)/);
+            if (characteristicMatch) {
+                dataType = findDataType(characteristicMatch[1], content);
+            }
+        }
+        
+        if (dataType) {
             // Check for example values in different formats:
             // 1. Quoted strings: "value" or 'value'
             // 2. Typed literals: "value"^^xsd:type or 'value'^^xsd:type
