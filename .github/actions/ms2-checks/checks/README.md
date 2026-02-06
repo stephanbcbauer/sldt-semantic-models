@@ -91,9 +91,9 @@ Open `../index.js` and add your check to `MS2_CHECKS_REGISTRY`:
 ```javascript
 // Category 3: Content Quality
 content: [
-    { id: 'MS2_3_1', key: 'preferredNameAndDescription', label: 'Preferred name and description present', critical: true, module: 'content' },
+    { id: 'MS2_3_1', key: 'preferredNameAndDescription', label: 'Preferred name and description present', severity: 'critical', module: 'content' },
     // ... existing checks ...
-    { id: 'MS2_3_6', key: 'terminology', label: 'Proper terminology usage', critical: false, module: 'content' }  // <-- Add here
+    { id: 'MS2_3_6', key: 'terminology', label: 'Proper terminology usage', severity: 'advisory', module: 'content' }  // <-- Add here
 ],
 ```
 
@@ -101,7 +101,7 @@ content: [
 - `id`: Your unique MS2 ID (e.g., 'MS2_3_6')
 - `key`: Function name without 'check' prefix (e.g., 'terminology')
 - `label`: Human-readable description
-- `critical`: `true` for critical checks, `false` for advisory
+- `severity`: `'critical'` for critical checks, `'advisory'` for best practices
 - `module`: Category name ('validation', 'naming', 'content', 'structure', 'files')
 
 ### Step 5: Add to the Executor
@@ -191,11 +191,15 @@ Your check will automatically appear in:
 2. **PR Comment**: In a category-specific table
    ```markdown
    📋 **Category 3: Content Quality**
-   | ID | Criterion | Status | Details |
-   | MS2_3_6 | Proper terminology usage | ✅ | All terminology is current |
+   | ID | Criterion | Severity | Status | Details |
+   | MS2_3_6 | Proper terminology usage | 🟡 | ✅ | All terminology is current |
    ```
 
 3. **Summary**: Included in overall statistics
+
+**Severity Icons:**
+- 🔴 **Critical** - Must pass for MS2 compliance
+- 🟡 **Advisory** - Recommended best practice
 
 ## Questions?
 

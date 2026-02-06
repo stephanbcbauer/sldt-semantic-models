@@ -36,45 +36,45 @@ const validationChecks = require('./checks/validation');
 const MS2_CHECKS_REGISTRY = {
     // Category 1: SAMM Validation
     validation: [
-        { id: 'MS2_1_1', key: 'sammValidation', label: 'Model validates with SAMM SDK', critical: true, module: 'validation' }
+        { id: 'MS2_1_1', key: 'sammValidation', label: 'Model validates with SAMM SDK', severity: 'critical', module: 'validation' }
     ],
     
     // Category 2: Naming Conventions
     naming: [
-        { id: 'MS2_2_1', key: 'camelCase', label: 'Use Camel-Case', critical: true, module: 'naming' },
-        { id: 'MS2_2_2', key: 'noConsecutiveUnderscores', label: 'No consecutive underscores', critical: true, module: 'naming' },
-        { id: 'MS2_2_3', key: 'capitalLetterModelElements', label: 'Model elements start with capital letter', critical: true, module: 'naming' },
-        { id: 'MS2_2_4', key: 'smallLetterProperties', label: 'Properties start with small letter', critical: true, module: 'naming' },
-        { id: 'MS2_2_5', key: 'propertyCharacteristicNameDiff', label: 'Property and Characteristic names differ', critical: true, module: 'naming' }
+        { id: 'MS2_2_1', key: 'camelCase', label: 'Use Camel-Case', severity: 'critical', module: 'naming' },
+        { id: 'MS2_2_2', key: 'noConsecutiveUnderscores', label: 'No consecutive underscores', severity: 'critical', module: 'naming' },
+        { id: 'MS2_2_3', key: 'capitalLetterModelElements', label: 'Model elements start with capital letter', severity: 'critical', module: 'naming' },
+        { id: 'MS2_2_4', key: 'smallLetterProperties', label: 'Properties start with small letter', severity: 'critical', module: 'naming' },
+        { id: 'MS2_2_5', key: 'propertyCharacteristicNameDiff', label: 'Property and Characteristic names differ', severity: 'critical', module: 'naming' }
     ],
     
     // Category 3: Content Quality
     content: [
-        { id: 'MS2_3_1', key: 'preferredNameAndDescription', label: 'Preferred name and description present', critical: true, module: 'content' },
-        { id: 'MS2_3_2', key: 'preferredNameDescriptionDiff', label: 'PreferredName and description differ', critical: true, module: 'content' },
-        { id: 'MS2_3_3', key: 'preferredNameHumanReadable', label: 'PreferredName is human readable', critical: true, module: 'content' },
-        { id: 'MS2_3_4', key: 'exampleValues', label: 'Example values for simple types', critical: true, module: 'content' },
-        { id: 'MS2_3_5', key: 'spelling', label: 'Spelling check (preferredName & description)', critical: false, module: 'content' }
+        { id: 'MS2_3_1', key: 'preferredNameAndDescription', label: 'Preferred name and description present', severity: 'critical', module: 'content' },
+        { id: 'MS2_3_2', key: 'preferredNameDescriptionDiff', label: 'PreferredName and description differ', severity: 'critical', module: 'content' },
+        { id: 'MS2_3_3', key: 'preferredNameHumanReadable', label: 'PreferredName is human readable', severity: 'critical', module: 'content' },
+        { id: 'MS2_3_4', key: 'exampleValues', label: 'Example values for simple types', severity: 'critical', module: 'content' },
+        { id: 'MS2_3_5', key: 'spelling', label: 'Spelling check (preferredName & description)', severity: 'advisory', module: 'content' }
     ],
     
     // Category 4: Model Structure
     structure: [
-        { id: 'MS2_4_1', key: 'semanticVersioning', label: 'Semantic versioning', critical: true, module: 'structure' },
-        { id: 'MS2_4_2', key: 'abbreviationUsage', label: 'Abbreviation usage', critical: false, module: 'structure' },
-        { id: 'MS2_4_3', key: 'redundantPrefixes', label: 'Redundant prefixes', critical: false, module: 'structure' },
-        { id: 'MS2_4_4', key: 'aspectNaming', label: 'Aspect naming convention', critical: false, module: 'structure' },
-        { id: 'MS2_4_5', key: 'unitCatalog', label: 'Units from SAMM catalog', critical: false, module: 'structure' },
-        { id: 'MS2_4_6', key: 'constraints', label: 'Use constraints', critical: false, module: 'structure' },
-        { id: 'MS2_4_7', key: 'externalStandards', label: 'External standards referenced', critical: false, module: 'structure' }
+        { id: 'MS2_4_1', key: 'semanticVersioning', label: 'Semantic versioning', severity: 'critical', module: 'structure' },
+        { id: 'MS2_4_2', key: 'abbreviationUsage', label: 'Abbreviation usage', severity: 'advisory', module: 'structure' },
+        { id: 'MS2_4_3', key: 'redundantPrefixes', label: 'Redundant prefixes', severity: 'advisory', module: 'structure' },
+        { id: 'MS2_4_4', key: 'aspectNaming', label: 'Aspect naming convention', severity: 'advisory', module: 'structure' },
+        { id: 'MS2_4_5', key: 'unitCatalog', label: 'Units from SAMM catalog', severity: 'advisory', module: 'structure' },
+        { id: 'MS2_4_6', key: 'constraints', label: 'Use constraints', severity: 'advisory', module: 'structure' },
+        { id: 'MS2_4_7', key: 'externalStandards', label: 'External standards referenced', severity: 'advisory', module: 'structure' }
     ],
     
     // Category 5: Files & Metadata
     files: [
-        { id: 'MS2_5_1', key: 'externalModelsState', label: 'External models have "release" state', critical: true, module: 'files' },
-        { id: 'MS2_5_2', key: 'metadataJson', label: 'metadata.json with status "release"', critical: true, module: 'files' },
-        { id: 'MS2_5_3', key: 'jsonSchemaValidation', label: 'JSON schema validates example payload', critical: true, module: 'files' },
-        { id: 'MS2_5_4', key: 'releaseNotes', label: 'RELEASE_NOTES.md exists', critical: true, module: 'files' },
-        { id: 'MS2_5_5', key: 'copyrightHeader', label: 'Copyright header with contributors', critical: true, module: 'files' }
+        { id: 'MS2_5_1', key: 'externalModelsState', label: 'External models have "release" state', severity: 'critical', module: 'files' },
+        { id: 'MS2_5_2', key: 'metadataJson', label: 'metadata.json with status "release"', severity: 'critical', module: 'files' },
+        { id: 'MS2_5_3', key: 'jsonSchemaValidation', label: 'JSON schema validates example payload', severity: 'critical', module: 'files' },
+        { id: 'MS2_5_4', key: 'releaseNotes', label: 'RELEASE_NOTES.md exists', severity: 'critical', module: 'files' },
+        { id: 'MS2_5_5', key: 'copyrightHeader', label: 'Copyright header with contributors', severity: 'critical', module: 'files' }
     ]
 };
 
@@ -208,7 +208,7 @@ async function runCheckCategory(categoryName, checks, result, content, file, mod
         switch (check.key) {
             // Validation checks
             case 'sammValidation':
-                checkResult = await validationChecks.checkSammValidation(file, sammSdkPath);
+                checkResult = await validationChecks.checkSammValidation(file, sammSdkPath, sammVersion);
                 break;
                 
             // Naming checks
@@ -378,13 +378,16 @@ function generateReport(results, repository, runId) {
         
         for (const category of categories) {
             report += `${category.label}\n\n`;
-            report += '| ID | Criterion | Status | Details |\n';
-            report += '|----|-----------|--------|----------|\n';
+            report += '| ID | Criterion | Severity | Status | Details |\n';
+            report += '|----|-----------|----------|--------|----------|\n';
             
             for (const check of category.checks) {
                 const checkResult = result.checks[check.key];
                 let status = '⚪';
                 let details = '';
+                
+                // Get severity icon
+                const severityIcon = check.severity === 'critical' ? '🔴' : '🟡';
                 
                 if (checkResult) {
                     if (checkResult.status === 'pass') {
@@ -422,26 +425,32 @@ function generateReport(results, repository, runId) {
                     }
                 }
                 
-                report += `| ${check.id} | ${check.label} | ${status} | ${details} |\n`;
+                report += `| ${check.id} | ${check.label} | ${severityIcon} | ${status} | ${details} |\n`;
             }
             
             report += '\n';
         }
     }
     
-    report += '\n---\n';
-    report += '**Legend:**\n';
-    report += '- ✅ Pass\n';
-    report += '- ❌ Fail\n';
-    report += '- ⚠️ Warning (review recommended)\n';
-    report += '- ℹ️ Info (not applicable or advisory)\n';
+    report += '\n---\n\n';
+    report += '### Legend\n\n';
+    report += '**Status Icons:**\n';
+    report += '- ✅ **Pass** - Check passed successfully\n';
+    report += '- ❌ **Fail** - Check failed, action required\n';
+    report += '- ⚠️ **Warning** - Review recommended, potential issue detected\n';
+    report += '- ℹ️ **Info** - Informational, not applicable or advisory\n';
+    report += '- ⚪ **Not Run** - Check was not executed\n';
     report += '\n';
-    report += '**Check IDs:**\n';
-    report += '- `MS2_1_x`: SAMM Validation\n';
-    report += '- `MS2_2_x`: Naming Conventions\n';
-    report += '- `MS2_3_x`: Content Quality\n';
-    report += '- `MS2_4_x`: Model Structure\n';
-    report += '- `MS2_5_x`: Files & Metadata\n';
+    report += '**Severity Levels:**\n';
+    report += '- 🔴 **Critical** - Must pass for MS2 compliance\n';
+    report += '- 🟡 **Advisory** - Recommended best practice\n';
+    report += '\n';
+    report += '**Check ID Categories:**\n';
+    report += '- 🔍 `MS2_1_x` - SAMM Validation\n';
+    report += '- 📝 `MS2_2_x` - Naming Conventions\n';
+    report += '- 📋 `MS2_3_x` - Content Quality\n';
+    report += '- 🏗️ `MS2_4_x` - Model Structure\n';
+    report += '- 📁 `MS2_5_x` - Files & Metadata\n';
     
     return report;
 }

@@ -24,17 +24,17 @@ const execPromise = promisify(exec);
  */
 
 // Check: SAMM Validation
-async function checkSammValidation(file, sammSdkPath) {
+async function checkSammValidation(file, sammSdkPath, sammVersion) {
     try {
         const { stdout, stderr } = await execPromise(`java -jar ${sammSdkPath} aspect ${file} validate`);
         return { 
             status: 'pass', 
-            message: 'Model validates successfully with SAMM CLI'
+            message: `Model validates successfully with SAMM CLI ${sammVersion}`
         };
     } catch (error) {
         return { 
             status: 'fail', 
-            message: `Validation failed: ${error.message}`,
+            message: `Validation failed with SAMM CLI ${sammVersion}: ${error.message}`,
             details: error.stderr || error.stdout
         };
     }
