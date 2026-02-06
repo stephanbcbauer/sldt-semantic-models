@@ -27,6 +27,68 @@ const structureChecks = require('./checks/structure');
 const fileChecks = require('./checks/files');
 const validationChecks = require('./checks/validation');
 
+/**
+ * Central MS2 Checks Registry
+ * Organized by category with unique IDs for easy reference and maintenance
+ * ID Format: MS2_<category>_<number>
+ * Categories: 1=Validation, 2=Naming, 3=Content, 4=Structure, 5=Files
+ */
+const MS2_CHECKS_REGISTRY = {
+    // Category 1: SAMM Validation
+    validation: [
+        { id: 'MS2_1_1', key: 'sammValidation', label: 'Model validates with SAMM SDK', critical: true, module: 'validation' }
+    ],
+    
+    // Category 2: Naming Conventions
+    naming: [
+        { id: 'MS2_2_1', key: 'camelCase', label: 'Use Camel-Case', critical: true, module: 'naming' },
+        { id: 'MS2_2_2', key: 'noConsecutiveUnderscores', label: 'No consecutive underscores', critical: true, module: 'naming' },
+        { id: 'MS2_2_3', key: 'capitalLetterModelElements', label: 'Model elements start with capital letter', critical: true, module: 'naming' },
+        { id: 'MS2_2_4', key: 'smallLetterProperties', label: 'Properties start with small letter', critical: true, module: 'naming' },
+        { id: 'MS2_2_5', key: 'propertyCharacteristicNameDiff', label: 'Property and Characteristic names differ', critical: true, module: 'naming' }
+    ],
+    
+    // Category 3: Content Quality
+    content: [
+        { id: 'MS2_3_1', key: 'preferredNameAndDescription', label: 'Preferred name and description present', critical: true, module: 'content' },
+        { id: 'MS2_3_2', key: 'preferredNameDescriptionDiff', label: 'PreferredName and description differ', critical: true, module: 'content' },
+        { id: 'MS2_3_3', key: 'preferredNameHumanReadable', label: 'PreferredName is human readable', critical: true, module: 'content' },
+        { id: 'MS2_3_4', key: 'exampleValues', label: 'Example values for simple types', critical: true, module: 'content' },
+        { id: 'MS2_3_5', key: 'spelling', label: 'Spelling check (preferredName & description)', critical: false, module: 'content' }
+    ],
+    
+    // Category 4: Model Structure
+    structure: [
+        { id: 'MS2_4_1', key: 'semanticVersioning', label: 'Semantic versioning', critical: true, module: 'structure' },
+        { id: 'MS2_4_2', key: 'abbreviationUsage', label: 'Abbreviation usage', critical: false, module: 'structure' },
+        { id: 'MS2_4_3', key: 'redundantPrefixes', label: 'Redundant prefixes', critical: false, module: 'structure' },
+        { id: 'MS2_4_4', key: 'aspectNaming', label: 'Aspect naming convention', critical: false, module: 'structure' },
+        { id: 'MS2_4_5', key: 'unitCatalog', label: 'Units from SAMM catalog', critical: false, module: 'structure' },
+        { id: 'MS2_4_6', key: 'constraints', label: 'Use constraints', critical: false, module: 'structure' },
+        { id: 'MS2_4_7', key: 'externalStandards', label: 'External standards referenced', critical: false, module: 'structure' }
+    ],
+    
+    // Category 5: Files & Metadata
+    files: [
+        { id: 'MS2_5_1', key: 'externalModelsState', label: 'External models have "release" state', critical: true, module: 'files' },
+        { id: 'MS2_5_2', key: 'metadataJson', label: 'metadata.json with status "release"', critical: true, module: 'files' },
+        { id: 'MS2_5_3', key: 'jsonSchemaValidation', label: 'JSON schema validates example payload', critical: true, module: 'files' },
+        { id: 'MS2_5_4', key: 'releaseNotes', label: 'RELEASE_NOTES.md exists', critical: true, module: 'files' },
+        { id: 'MS2_5_5', key: 'copyrightHeader', label: 'Copyright header with contributors', critical: true, module: 'files' }
+    ]
+};
+
+// Flatten registry for easy iteration
+function getAllChecks() {
+    return [
+        ...MS2_CHECKS_REGISTRY.validation,
+        ...MS2_CHECKS_REGISTRY.naming,
+        ...MS2_CHECKS_REGISTRY.content,
+        ...MS2_CHECKS_REGISTRY.structure,
+        ...MS2_CHECKS_REGISTRY.files
+    ];
+}
+
 var sammVersion = core.getInput('samm_version');
 var sammSdkPath = `${__dirname}/samm-cli-${sammVersion}.jar`;
 
@@ -104,76 +166,134 @@ async function runMS2Checks(files) {
         // Read TTL content for parsing
         const content = fs.readFileSync(file, 'utf8');
         
-        // 1. SAMM validation
-        console.log('::group::🔍 SAMM Validation');
-        result.checks.sammValidation = await validationChecks.checkSammValidation(file, sammSdkPath);
-        console.log(`  Status: ${result.checks.sammValidation.status}`);
-        console.log('::endgroup::');
-
-        // 2. Naming convention checks
-        console.log('::group::📝 Naming Convention Checks');
-        result.checks.camelCase = namingChecks.checkCamelCase(content);
-        result.checks.noConsecutiveUnderscores = namingChecks.checkNoConsecutiveUnderscores(content);
-        result.checks.capitalLetterModelElements = namingChecks.checkCapitalLetterModelElements(content);
-        result.checks.smallLetterProperties = namingChecks.checkSmallLetterProperties(content);
-        result.checks.propertyCharacteristicNameDiff = namingChecks.checkPropertyCharacteristicNameDiff(content);
-        console.log(`  CamelCase: ${result.checks.camelCase.status}`);
-        console.log(`  No consecutive underscores: ${result.checks.noConsecutiveUnderscores.status}`);
-        console.log(`  Capital letters: ${result.checks.capitalLetterModelElements.status}`);
-        console.log(`  Lowercase properties: ${result.checks.smallLetterProperties.status}`);
-        console.log(`  Property/Characteristic names: ${result.checks.propertyCharacteristicNameDiff.status}`);
-        console.log('::endgroup::');
-        
-        // 3. Content checks
-        console.log('::group::📋 Content Quality Checks');
-        result.checks.preferredNameAndDescription = contentChecks.checkPreferredNameAndDescription(content);
-        result.checks.preferredNameDescriptionDiff = contentChecks.checkPreferredNameDescriptionDiff(content);
-        result.checks.preferredNameHumanReadable = contentChecks.checkPreferredNameHumanReadable(content);
-        result.checks.exampleValues = contentChecks.checkExampleValues(content);
-        result.checks.spelling = contentChecks.checkSpelling(content);
-        console.log(`  PreferredName & Description: ${result.checks.preferredNameAndDescription.status}`);
-        console.log(`  Fields differ: ${result.checks.preferredNameDescriptionDiff.status}`);
-        console.log(`  Human readable: ${result.checks.preferredNameHumanReadable.status}`);
-        console.log(`  Example values: ${result.checks.exampleValues.status}`);
-        console.log(`  Spelling: ${result.checks.spelling.status}`);
-        console.log('::endgroup::');
-        
-        // 4. Structure checks
-        console.log('::group::🏗️ Model Structure Checks');
-        result.checks.semanticVersioning = structureChecks.checkSemanticVersioning(content, modelDir);
-        result.checks.abbreviationUsage = structureChecks.checkAbbreviationUsage(content);
-        result.checks.redundantPrefixes = structureChecks.checkRedundantPrefixes(content);
-        result.checks.aspectNaming = structureChecks.checkAspectNaming(content);
-        result.checks.unitCatalog = structureChecks.checkUnitCatalog(content);
-        result.checks.constraints = structureChecks.checkConstraints(content);
-        result.checks.externalStandards = structureChecks.checkExternalStandards(content);
-        console.log(`  Semantic versioning: ${result.checks.semanticVersioning.status}`);
-        console.log(`  Abbreviations: ${result.checks.abbreviationUsage.status}`);
-        console.log(`  Redundant prefixes: ${result.checks.redundantPrefixes.status}`);
-        console.log(`  Aspect naming: ${result.checks.aspectNaming.status}`);
-        console.log(`  Unit catalog: ${result.checks.unitCatalog.status}`);
-        console.log(`  Constraints: ${result.checks.constraints.status}`);
-        console.log(`  External standards: ${result.checks.externalStandards.status}`);
-        console.log('::endgroup::');
-        
-        // 5. File checks
-        console.log('::group::📁 File & Metadata Checks');
-        result.checks.externalModelsState = await fileChecks.checkExternalModelsState(content);
-        result.checks.metadataJson = fileChecks.checkMetadataJson(modelDir);
-        result.checks.jsonSchemaValidation = await fileChecks.checkJsonSchemaValidation(modelDir, modelName);
-        result.checks.releaseNotes = fileChecks.checkReleaseNotes(modelDir);
-        result.checks.copyrightHeader = fileChecks.checkCopyrightHeader(content);
-        console.log(`  External models: ${result.checks.externalModelsState.status}`);
-        console.log(`  metadata.json: ${result.checks.metadataJson.status}`);
-        console.log(`  JSON schema: ${result.checks.jsonSchemaValidation.status}`);
-        console.log(`  RELEASE_NOTES.md: ${result.checks.releaseNotes.status}`);
-        console.log(`  Copyright header: ${result.checks.copyrightHeader.status}`);
-        console.log('::endgroup::');
+        // Run checks by category using the registry
+        await runCheckCategory('validation', MS2_CHECKS_REGISTRY.validation, result, content, file, modelDir, modelName);
+        await runCheckCategory('naming', MS2_CHECKS_REGISTRY.naming, result, content, file, modelDir, modelName);
+        await runCheckCategory('content', MS2_CHECKS_REGISTRY.content, result, content, file, modelDir, modelName);
+        await runCheckCategory('structure', MS2_CHECKS_REGISTRY.structure, result, content, file, modelDir, modelName);
+        await runCheckCategory('files', MS2_CHECKS_REGISTRY.files, result, content, file, modelDir, modelName);
 
         allResults.push(result);
     }
 
     return allResults;
+}
+
+/**
+ * Run all checks in a specific category
+ */
+async function runCheckCategory(categoryName, checks, result, content, file, modelDir, modelName) {
+    const categoryIcons = {
+        validation: '🔍',
+        naming: '📝',
+        content: '📋',
+        structure: '🏗️',
+        files: '📁'
+    };
+    
+    const categoryLabels = {
+        validation: 'SAMM Validation',
+        naming: 'Naming Convention Checks',
+        content: 'Content Quality Checks',
+        structure: 'Model Structure Checks',
+        files: 'Files & Metadata Checks'
+    };
+    
+    console.log(`::group::${categoryIcons[categoryName]} ${categoryLabels[categoryName]}`);
+    
+    for (const check of checks) {
+        // Execute the appropriate check function
+        let checkResult;
+        
+        switch (check.key) {
+            // Validation checks
+            case 'sammValidation':
+                checkResult = await validationChecks.checkSammValidation(file, sammSdkPath);
+                break;
+                
+            // Naming checks
+            case 'camelCase':
+                checkResult = namingChecks.checkCamelCase(content);
+                break;
+            case 'noConsecutiveUnderscores':
+                checkResult = namingChecks.checkNoConsecutiveUnderscores(content);
+                break;
+            case 'capitalLetterModelElements':
+                checkResult = namingChecks.checkCapitalLetterModelElements(content);
+                break;
+            case 'smallLetterProperties':
+                checkResult = namingChecks.checkSmallLetterProperties(content);
+                break;
+            case 'propertyCharacteristicNameDiff':
+                checkResult = namingChecks.checkPropertyCharacteristicNameDiff(content);
+                break;
+                
+            // Content checks
+            case 'preferredNameAndDescription':
+                checkResult = contentChecks.checkPreferredNameAndDescription(content);
+                break;
+            case 'preferredNameDescriptionDiff':
+                checkResult = contentChecks.checkPreferredNameDescriptionDiff(content);
+                break;
+            case 'preferredNameHumanReadable':
+                checkResult = contentChecks.checkPreferredNameHumanReadable(content);
+                break;
+            case 'exampleValues':
+                checkResult = contentChecks.checkExampleValues(content);
+                break;
+            case 'spelling':
+                checkResult = contentChecks.checkSpelling(content);
+                break;
+                
+            // Structure checks
+            case 'semanticVersioning':
+                checkResult = structureChecks.checkSemanticVersioning(content, modelDir);
+                break;
+            case 'abbreviationUsage':
+                checkResult = structureChecks.checkAbbreviationUsage(content);
+                break;
+            case 'redundantPrefixes':
+                checkResult = structureChecks.checkRedundantPrefixes(content);
+                break;
+            case 'aspectNaming':
+                checkResult = structureChecks.checkAspectNaming(content);
+                break;
+            case 'unitCatalog':
+                checkResult = structureChecks.checkUnitCatalog(content);
+                break;
+            case 'constraints':
+                checkResult = structureChecks.checkConstraints(content);
+                break;
+            case 'externalStandards':
+                checkResult = structureChecks.checkExternalStandards(content);
+                break;
+                
+            // File checks
+            case 'externalModelsState':
+                checkResult = await fileChecks.checkExternalModelsState(content);
+                break;
+            case 'metadataJson':
+                checkResult = fileChecks.checkMetadataJson(modelDir);
+                break;
+            case 'jsonSchemaValidation':
+                checkResult = await fileChecks.checkJsonSchemaValidation(modelDir, modelName);
+                break;
+            case 'releaseNotes':
+                checkResult = fileChecks.checkReleaseNotes(modelDir);
+                break;
+            case 'copyrightHeader':
+                checkResult = fileChecks.checkCopyrightHeader(content);
+                break;
+                
+            default:
+                checkResult = { status: 'info', message: 'Check not implemented' };
+        }
+        
+        result.checks[check.key] = checkResult;
+        console.log(`  [${check.id}] ${check.label}: ${checkResult.status}`);
+    }
+    
+    console.log('::endgroup::');
 }
 
 function generateReport(results, repository, runId) {
@@ -189,31 +309,7 @@ function generateReport(results, repository, runId) {
         workflowLink = `https://github.com/${repository}/actions/runs/${runId}`;
     }
     
-    const criteriaChecks = [
-        { key: 'sammValidation', label: 'Model validates with SAMM SDK', critical: true },
-        { key: 'camelCase', label: 'Use Camel-Case', critical: true },
-        { key: 'noConsecutiveUnderscores', label: 'No consecutive underscores', critical: true },
-        { key: 'capitalLetterModelElements', label: 'Model elements start with capital letter', critical: true },
-        { key: 'smallLetterProperties', label: 'Properties start with small letter', critical: true },
-        { key: 'preferredNameAndDescription', label: 'Preferred name and description present', critical: true },
-        { key: 'propertyCharacteristicNameDiff', label: 'Property and Characteristic names differ', critical: true },
-        { key: 'semanticVersioning', label: 'Semantic versioning', critical: true },
-        { key: 'abbreviationUsage', label: 'Abbreviation usage', critical: false },
-        { key: 'redundantPrefixes', label: 'Redundant prefixes', critical: false },
-        { key: 'preferredNameDescriptionDiff', label: 'PreferredName and description differ', critical: true },
-        { key: 'preferredNameHumanReadable', label: 'PreferredName is human readable', critical: true },
-        { key: 'aspectNaming', label: 'Aspect naming convention', critical: false },
-        { key: 'unitCatalog', label: 'Units from SAMM catalog', critical: false },
-        { key: 'constraints', label: 'Use constraints', critical: false },
-        { key: 'externalStandards', label: 'External standards referenced', critical: false },
-        { key: 'exampleValues', label: 'Example values for simple types', critical: true },
-        { key: 'spelling', label: 'Spelling check (preferredName & description)', critical: false },
-        { key: 'externalModelsState', label: 'External models have "release" state', critical: true },
-        { key: 'metadataJson', label: 'metadata.json with status "release"', critical: true },
-        { key: 'jsonSchemaValidation', label: 'JSON schema validates example payload', critical: true },
-        { key: 'releaseNotes', label: 'RELEASE_NOTES.md exists', critical: true },
-        { key: 'copyrightHeader', label: 'Copyright header with contributors', critical: true }
-    ];
+    const allChecks = getAllChecks();
     
     // Calculate summary statistics
     let totalChecks = 0;
@@ -223,7 +319,7 @@ function generateReport(results, repository, runId) {
     let infoChecks = 0;
     
     for (const result of results) {
-        for (const check of criteriaChecks) {
+        for (const check of allChecks) {
             const checkResult = result.checks[check.key];
             if (checkResult) {
                 totalChecks++;
@@ -251,10 +347,10 @@ function generateReport(results, repository, runId) {
         report += '**❌ Failed Checks:**\n';
         for (const result of results) {
             const failedChecksList = [];
-            for (const check of criteriaChecks) {
+            for (const check of allChecks) {
                 const checkResult = result.checks[check.key];
                 if (checkResult && checkResult.status === 'fail') {
-                    failedChecksList.push(`- ${check.label}`);
+                    failedChecksList.push(`- [${check.id}] ${check.label}`);
                 }
             }
             if (failedChecksList.length > 0) {
@@ -267,57 +363,70 @@ function generateReport(results, repository, runId) {
     
     report += '---\n\n';
     
-    // Detailed results per file
+    // Detailed results per file - grouped by category
     for (const result of results) {
         report += `### File: \`${result.file}\`\n\n`;
-        report += '| Criterion | Status | Details |\n';
-        report += '|-----------|--------|----------|\n';
         
-        for (const check of criteriaChecks) {
-            const checkResult = result.checks[check.key];
-            let status = '⚪';
-            let details = '';
+        // Generate grouped tables by category
+        const categories = [
+            { name: 'validation', label: '🔍 **Category 1: SAMM Validation**', checks: MS2_CHECKS_REGISTRY.validation },
+            { name: 'naming', label: '📝 **Category 2: Naming Conventions**', checks: MS2_CHECKS_REGISTRY.naming },
+            { name: 'content', label: '📋 **Category 3: Content Quality**', checks: MS2_CHECKS_REGISTRY.content },
+            { name: 'structure', label: '🏗️ **Category 4: Model Structure**', checks: MS2_CHECKS_REGISTRY.structure },
+            { name: 'files', label: '📁 **Category 5: Files & Metadata**', checks: MS2_CHECKS_REGISTRY.files }
+        ];
+        
+        for (const category of categories) {
+            report += `${category.label}\n\n`;
+            report += '| ID | Criterion | Status | Details |\n';
+            report += '|----|-----------|--------|----------|\n';
             
-            if (checkResult) {
-                if (checkResult.status === 'pass') {
-                    status = '✅';
-                    details = checkResult.message;
-                } else if (checkResult.status === 'fail') {
-                    status = '❌';
-                    details = checkResult.message;
-                    if (checkResult.details) {
-                        // Handle both array and string details
-                        if (Array.isArray(checkResult.details)) {
-                            details += '<br>' + checkResult.details.join('<br>');
-                        } else {
-                            details += '<br>' + checkResult.details;
+            for (const check of category.checks) {
+                const checkResult = result.checks[check.key];
+                let status = '⚪';
+                let details = '';
+                
+                if (checkResult) {
+                    if (checkResult.status === 'pass') {
+                        status = '✅';
+                        details = checkResult.message;
+                    } else if (checkResult.status === 'fail') {
+                        status = '❌';
+                        details = checkResult.message;
+                        if (checkResult.details) {
+                            // Handle both array and string details
+                            if (Array.isArray(checkResult.details)) {
+                                details += '<br>' + checkResult.details.join('<br>');
+                            } else {
+                                details += '<br>' + checkResult.details;
+                            }
                         }
-                    }
-                    // Add link to workflow run for failed checks
-                    if (workflowLink) {
-                        details += `<br>[View in workflow run →](${workflowLink})`;
-                    }
-                } else if (checkResult.status === 'warning') {
-                    status = '⚠️';
-                    details = checkResult.message;
-                    if (checkResult.details) {
-                        // Handle both array and string details
-                        if (Array.isArray(checkResult.details)) {
-                            details += '<br>' + checkResult.details.join('<br>');
-                        } else {
-                            details += '<br>' + checkResult.details;
+                        // Add link to workflow run for failed checks
+                        if (workflowLink) {
+                            details += `<br>[View in workflow run →](${workflowLink})`;
                         }
+                    } else if (checkResult.status === 'warning') {
+                        status = '⚠️';
+                        details = checkResult.message;
+                        if (checkResult.details) {
+                            // Handle both array and string details
+                            if (Array.isArray(checkResult.details)) {
+                                details += '<br>' + checkResult.details.join('<br>');
+                            } else {
+                                details += '<br>' + checkResult.details;
+                            }
+                        }
+                    } else if (checkResult.status === 'info') {
+                        status = 'ℹ️';
+                        details = checkResult.message;
                     }
-                } else if (checkResult.status === 'info') {
-                    status = 'ℹ️';
-                    details = checkResult.message;
                 }
+                
+                report += `| ${check.id} | ${check.label} | ${status} | ${details} |\n`;
             }
             
-            report += `| ${check.label} | ${status} | ${details} |\n`;
+            report += '\n';
         }
-        
-        report += '\n';
     }
     
     report += '\n---\n';
@@ -326,6 +435,13 @@ function generateReport(results, repository, runId) {
     report += '- ❌ Fail\n';
     report += '- ⚠️ Warning (review recommended)\n';
     report += '- ℹ️ Info (not applicable or advisory)\n';
+    report += '\n';
+    report += '**Check IDs:**\n';
+    report += '- `MS2_1_x`: SAMM Validation\n';
+    report += '- `MS2_2_x`: Naming Conventions\n';
+    report += '- `MS2_3_x`: Content Quality\n';
+    report += '- `MS2_4_x`: Model Structure\n';
+    report += '- `MS2_5_x`: Files & Metadata\n';
     
     return report;
 }
