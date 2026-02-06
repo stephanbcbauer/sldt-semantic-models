@@ -124,6 +124,27 @@ async function main() {
         }), 'ms2-output.json');
 
         console.log('MS2 checks completed');
+        
+        // Check if any critical checks failed
+        let hasCriticalFailures = false;
+        const allChecks = getAllChecks();
+        
+        for (const result of results) {
+            for (const check of allChecks) {
+                if (check.severity === 'critical') {
+                    const checkResult = result.checks[check.key];
+                    if (checkResult && checkResult.status === 'fail') {
+                        hasCriticalFailures = true;
+                        console.error(`❌ Critical check failed: [${check.id}] ${check.label} in file ${result.file}`);
+                    }
+                }
+            }
+        }
+        
+        // Fail the action if any critical checks failed
+        if (hasCriticalFailures) {
+            core.setFailed('One or more critical MS2 checks failed. Please review the results and fix the issues before merging.');
+        }
     } catch (error) {
         core.setFailed(error.message);
     }
