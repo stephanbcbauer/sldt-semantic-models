@@ -130,10 +130,12 @@ async function runMS2Checks(files) {
         result.checks.preferredNameDescriptionDiff = contentChecks.checkPreferredNameDescriptionDiff(content);
         result.checks.preferredNameHumanReadable = contentChecks.checkPreferredNameHumanReadable(content);
         result.checks.exampleValues = contentChecks.checkExampleValues(content);
+        result.checks.spelling = await contentChecks.checkSpelling(content);
         console.log(`  PreferredName & Description: ${result.checks.preferredNameAndDescription.status}`);
         console.log(`  Fields differ: ${result.checks.preferredNameDescriptionDiff.status}`);
         console.log(`  Human readable: ${result.checks.preferredNameHumanReadable.status}`);
         console.log(`  Example values: ${result.checks.exampleValues.status}`);
+        console.log(`  Spelling: ${result.checks.spelling.status}`);
         console.log('::endgroup::');
         
         // 4. Structure checks
@@ -205,6 +207,7 @@ function generateReport(results, repository, runId) {
         { key: 'constraints', label: 'Use constraints', critical: false },
         { key: 'externalStandards', label: 'External standards referenced', critical: false },
         { key: 'exampleValues', label: 'Example values for simple types', critical: true },
+        { key: 'spelling', label: 'Spelling check (preferredName & description)', critical: false },
         { key: 'externalModelsState', label: 'External models have "release" state', critical: true },
         { key: 'metadataJson', label: 'metadata.json with status "release"', critical: true },
         { key: 'jsonSchemaValidation', label: 'JSON schema validates example payload', critical: true },

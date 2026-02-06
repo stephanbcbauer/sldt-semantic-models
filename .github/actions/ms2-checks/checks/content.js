@@ -186,9 +186,95 @@ function checkExampleValues(content) {
     }
 }
 
+// Check: Spelling in preferredName and description fields
+async function checkSpelling(content) {
+    const issues = [];
+    
+    try {
+        // Use the cspell library for spell checking
+        const cspellLib = require('cspell-lib');
+        
+        // Custom dictionary for technical/domain-specific terms
+        const customWords = [
+            'samm', 'esmf', 'ttl', 'urn', 'rdf', 'xsd', 'uuid', 'iso',
+            'catenax', 'catena', 'dismantler', 'lifecycle', 'datatype',
+            'metadata', 'json', 'schema', 'namespace', 'versioning',
+            'preferredname', 'camelcase', 'timestamp', 'boolean', 'varchar',
+            'analytics', 'aggregation', 'semantic', 'ontology', 'iri',
+            'enum', 'enumeration', 'charset', 'utf', 'ascii', 'uri',
+            'datetime', 'datetype', 'regex', 'gtin', 'ean', 'upc', 'sku',
+            'oem', 'api', 'sdk', 'cli', 'http', 'https', 'url', 'id',
+            'qr', 'qrcode', 'barcode', 'iot', 'mqtt', 'tcp', 'ip',
+            'manufacturerpartid', 'serialnumber', 'manufacturername',
+            'productiondate', 'validuntil', 'validfrom', 'certificateid'
+        ];
+        
+        // Extract preferredName and description values
+        const textPattern = /samm:(preferredName|description)\s+"([^"]+)"/g;
+        let match;
+        const textsToCheck = [];
+        
+        while ((match = textPattern.exec(content)) !== null) {
+            const fieldType = match[1];
+            const text = match[2];
+            textsToCheck.push({ fieldType, text });
+        }
+        
+        if (textsToCheck.length === 0) {
+            return { status: 'info', message: 'No preferredName or description fields found to check' };
+        }
+        
+        // Check each text for spelling
+        for (const item of textsToCheck) {
+            const doc = {
+                uri: 'text.txt',
+                text: item.text,
+                languageId: 'plaintext'
+            };
+            
+            const settings = {
+                words: customWords,
+                language: 'en',
+                caseSensitive: false,
+                ignoreWords: customWords
+            };
+            
+            const results = await cspellLib.spellCheckDocument(doc, {}, settings);
+            
+            const misspellings = [];
+            for await (const issue of results) {
+                const word = issue.text;
+                // Skip words that are likely technical abbreviations or identifiers
+                // Skip all-caps words, camelCase words, numbers
+                if (!/^[A-Z]+$/.test(word) &&       // Not all caps
+                    !/^[a-z]+[A-Z]/.test(word) &&   // Not camelCase
+                    !/^\d+$/.test(word) &&          // Not just numbers
+                    !/^[A-Z][a-z]*[A-Z]/.test(word) && // Not PascalCase
+                    word.length > 2) {               // At least 3 chars
+                    misspellings.push(word);
+                }
+            }
+            
+            if (misspellings.length > 0) {
+                issues.push(`Potential typos in ${item.fieldType} "${item.text}": ${misspellings.join(', ')}`);
+            }
+        }
+    } catch (error) {
+        // If cspell is not available or fails, return info status
+        return { status: 'info', message: `Spelling check could not run: ${error.message}` };
+    }
+    
+    if (issues.length === 0) {
+        return { status: 'pass', message: 'No spelling issues detected in preferredName and description fields' };
+    } else {
+        return { status: 'warning', message: 'Potential spelling issues detected', details: issues };
+    }
+}
+
 module.exports = {
     checkPreferredNameAndDescription,
     checkPreferredNameDescriptionDiff,
     checkPreferredNameHumanReadable,
-    checkExampleValues
+    checkExampleValues,
+    checkSpelling
 };
